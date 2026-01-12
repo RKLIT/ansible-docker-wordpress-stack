@@ -7,8 +7,6 @@
 ![PHP](https://img.shields.io/badge/PHP-777BB4?logo=php&logoColor=white)
 
 Automated provisioning of a **WordPress + MariaDB** stack on Ubuntu VMs using **Ansible** and **Docker**.  
-Perfect for learning DevOps fundamentals or setting up a quick dev environment.
-
 ---
 
 ## ✨ Features
@@ -36,5 +34,5 @@ Perfect for learning DevOps fundamentals or setting up a quick dev environment.
 
 1. **Clone the repo**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/wordpress-ansible-docker-provisioner.git
+   git clone https://github.com/RKLIT/wordpress-ansible-docker-provisioner.git
    cd wordpress-ansible-docker-provisioner
