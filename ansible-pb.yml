@@ -1,0 +1,131 @@
+#playbook
+- name: Playbook Project Ansible - with Docker + Apache + PHP
+  hosts: servers
+  become: true
+  vars:
+    project_dir: /opt/web-app
+    image_name: ansible-apache-php:latest
+  tasks:
+    - name: Install prerequisite packages
+      apt:
+        name:
+          - mc
+          - curl
+          - gnupg
+          - lsb-release
+        state: present
+        update_cache: yes
+
+    - name: Add Docker official GPG key (dearmored)
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository (use jammy for noble compatibility)
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu jammy stable"
+        state: present
+        filename: docker
+
+    - name: Install Docker Engine and plugins
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+        update_cache: yes
+
+    - name: Ensure Docker is started and enabled
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add user 'vm1' to docker group
+      user:
+        name: vm1
+        groups: docker
+        append: yes
+
+# Install Dockerfile with Apache + PHP
+
+    - name: Create project DIR
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: vm1
+        group: vm1
+        mode: '0755'
+
+    - name: Copy Dockerfile to rm host
+      copy:
+        src: dockerfile/Dockerfile
+        dest: "{{ project_dir }}/Dockerfile"
+        owner: vm1
+        group: vm1
+        mode: '0644'
+
+    - name: Copy app file to remote host
+      copy:
+        src: dockerfile/app/
+        dest: "{{ project_dir }}/app/"
+        owner: vm1
+        group: vm1
+        mode: '0644'
+
+    - name: Build Docker image
+      docker_image:
+        name: "{{ image_name }}"
+        build:
+          path: "{{ project_dir }}"
+        source: build
+        force_source: yes
+      become: yes
+      environment:
+        DOCKER_HOST: unix:///var/run/docker.sock
+
+# Install WordPress
+
+    - name: Create wordpress project directory
+      file:
+        path: "{{ project_dir }}/wordpress"
+        state: directory
+        owner: vm1
+        group: vm1
+        mode: '0755'
+
+    - name: Copy WordPress Dockerfile to remote host
+      copy:
+        src: dockerfile_image_wordpress/Dockerfile
+        dest: "{{ project_dir }}/wordpress/Dockerfile"
+        owner: vm1
+        group: vm1
+        mode: '0644'
+
+    - name: Build WordPress image
+      command: docker build -t ansible_wordpress:latest .
+      args:
+        chdir: "{{ project_dir }}/wordpress"
+      become: false
+
+#Connect docker-compose.yml
+
+    - name: Copy docker-compose.yml to remote host
+      copy:
+        src: dockerfile_image_wordpress/docker-compose.yml
+        dest: "{{ project_dir }}/wordpress/docker-compose.yml"
+        owner: vm1
+        group: vm1
+        mode: '0644'
+
+    - name: Start WordPress stack with docker-compose
+      command: docker compose up -d
+      args:
+        chdir: "{{ project_dir }}/wordpress"
+      become: false
