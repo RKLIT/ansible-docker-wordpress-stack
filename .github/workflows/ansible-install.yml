@@ -16,4 +16,10 @@ jobs:
           sudo apt install -y ansible python3-pip
           pip3 install ansible-lint
 
+      - name: Check the syntax
+        run: |
+          ansible-playbook ./ansible-pb.yml \
+            -i ./inventory.ini \
+            --syntax-check
+
           
